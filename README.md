@@ -1,13 +1,11 @@
 # FastAPI Example for Databricks Apps
-
-This is a sample FastAPI application that demonstrates how API-based applications can be deployed on Databricks Apps runtime.  
-The sample application is headless and intended to be used with bearer token authentication (OAuth2).
+This is a FastAPI application that demonstrates how API-based applications can be deployed on Databricks Apps runtime.  
+The application is headless and intended to be used with bearer token authentication (OAuth2).
 
 Please refer to [Databricks authorization methods](https://docs.databricks.com/aws/en/dev-tools/auth/#databricks-authorization-methods) to obtain an OAuth token appropriately.
 
 ## API Endpoints
-
-The sample application provides the following API endpoints:
+The application provides the following API endpoints:
 
 #### API v1
 - `/api/v1/healthcheck` - Returns a response to validate the health of the application
@@ -27,26 +25,17 @@ The sample application provides the following API endpoints:
 ## Running Locally
 
 ```bash
-# Create and activate virtual environment
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 
-# Install dependencies within active venv
 pip install -r requirements.txt
 
-# Set environment variables (if not using .env file)
-export DATABRICKS_WAREHOUSE_ID=your-warehouse-id
-
-# If using a .env file: 
 cp .env.example .env 
-# Fill in .env fields
 
-# Run the application
-uvicorn app:app --reload
+python -m uvicorn backend.app:app --reload 
 ```
 
 ## Running the Lakebase Example
-
 ❗️**Important**: Following these steps will deploy a Lakebase instance and synced table pipeline in your Databricks workspace that will incur costs.
 
 ### 1. Create Lakebase Resources
@@ -62,19 +51,16 @@ With the app running and your `.env` file configured:
 ### 2. Validate and Test
 Once resources are created:
 1. Check the Databricks UI for: database instance, database, catalog, and `orders_synced` table
-2. Restart your local app: `uvicorn app:app --reload`
+2. Restart your local app: `python -m uvicorn fastapi.app:app --reload`
 3. Return to http://localhost:8000/docs - you should now see the `/orders` endpoints available
 
 ### 3. Clean Up Resources
 To avoid ongoing costs:
 1. Navigate to `/api/v1/resources/delete-lakebase-resources` endpoint
 2. Set `confirm_deletion` to `true`
-3. Click **Execute**
-
-    
+3. Click **Execute**  
 
 ## Running Tests
-
 ```bash
 # Run all tests
 pytest
@@ -84,7 +70,6 @@ pytest tests/v1/test_healthcheck.py
 ```
 
 ## Database Architecture
-
 This application uses a dual database architecture:
 
 - **Databricks SQL Warehouse**: Used for Unity Catalog table queries and analytics workloads via the `/api/v1/table` endpoint
@@ -93,7 +78,6 @@ This application uses a dual database architecture:
 The Lakebase PostgreSQL database uses automatic token refresh for Databricks database instances with OAuth authentication.
 
 ## Configuration
-
 The application uses environment variables for configuration:
 
 ### Databricks SQL Warehouse (for Unity Catalog queries)

@@ -11,16 +11,16 @@ from contextlib import asynccontextmanager
 from typing import Dict
 
 import uvicorn
-from config.database import (
+from .config.database import (
     check_database_exists,
     database_health,
     init_engine,
     start_token_refresh,
     stop_token_refresh,
 )
-from errors.handlers import register_exception_handlers
-from routes import api_router
-from services.db.connector import close_connections
+from .errors.handlers import register_exception_handlers
+from .routes import api_router
+from .services.db.connector import close_connections
 from sqlmodel import SQLModel
 
 from fastapi import FastAPI, Request
@@ -92,8 +92,8 @@ app.include_router(api_router)
 @app.get("/")
 async def root() -> Dict[str, str]:
     return {
-        "app": "Databricks FastAPI Example",
-        "message": "Welcome to the Databricks FastAPI example app",
+        "app": "Databricks FastAPI  app",
+        "message": "Welcome to the Databricks FastAPI app",
         "docs": "/docs",
     }
 

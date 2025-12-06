@@ -2,10 +2,10 @@
 
 import pytest
 
-from routes.v1.tables import table, insert_table_data
-from models.tables import TableInsertRequest
-from config.settings import Settings
-from errors.exceptions import ConfigurationError, DatabaseError
+from ....routes.v1.tables import table, insert_table_data
+from ....models.tables import TableInsertRequest
+from ....config.settings import Settings
+from ....errors.exceptions import ConfigurationError, DatabaseError
 
 
 @pytest.fixture

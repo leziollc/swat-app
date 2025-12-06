@@ -1,7 +1,7 @@
 import logging
 
-from config.database import get_async_db
-from models.orders import (
+from ...config.database import get_async_db
+from ...models.orders import (
     CursorPaginationInfo,
     Order,
     OrderCount,

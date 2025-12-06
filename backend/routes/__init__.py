@@ -1,7 +1,7 @@
 """Routes package for the FastAPI application."""
 
 from fastapi import APIRouter
-from config.database import check_database_exists
+from ..config.database import check_database_exists
 
 # Import router factory from versioned packages
 from .v1 import create_router

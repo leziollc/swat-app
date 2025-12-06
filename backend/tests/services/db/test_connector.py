@@ -2,7 +2,7 @@
 
 import pandas as pd
 import pytest
-from services.db.connector import get_connection, query, insert_data, close_connections
+from ....services.db.connector import get_connection, query, insert_data, close_connections
 
 
 @pytest.fixture

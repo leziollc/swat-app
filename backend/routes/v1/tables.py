@@ -7,10 +7,10 @@ Databricks Unity Catalog tables.
 
 from fastapi import APIRouter, Depends, Query
 
-from config.settings import Settings, get_settings
-from errors.exceptions import ConfigurationError, DatabaseError
-from models.tables import TableQueryParams, TableResponse, TableInsertRequest
-from services.db.connector import query, insert_data
+from ...config.settings import Settings, get_settings
+from ...errors.exceptions import ConfigurationError, DatabaseError
+from ...models.tables import TableQueryParams, TableResponse, TableInsertRequest
+from ...services.db.connector import query, insert_data
 
 router = APIRouter(tags=["tables"])
 
