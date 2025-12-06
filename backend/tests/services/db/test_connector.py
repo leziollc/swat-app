@@ -8,7 +8,7 @@ from ....services.db.connector import get_connection, query, insert_data, close_
 @pytest.fixture
 def mock_sql(mocker):
     """Mock the databricks sql module."""
-    return mocker.patch("services.db.connector.sql")
+    return mocker.patch("backend.services.db.connector.sql")
 
 
 @pytest.fixture
@@ -70,7 +70,7 @@ class TestDatabaseConnector:
         # Arrange
         test_query = "SELECT * FROM catalog.schema.table"
         mocker.patch(
-            "services.db.connector.get_connection", return_value=mock_connection
+            "backend.services.db.connector.get_connection", return_value=mock_connection
         )
 
         # Act
@@ -88,7 +88,7 @@ class TestDatabaseConnector:
         # Arrange
         test_query = "SELECT * FROM catalog.schema.table"
         mocker.patch(
-            "services.db.connector.get_connection", return_value=mock_connection
+            "backend.services.db.connector.get_connection", return_value=mock_connection
         )
 
         # Act
@@ -108,7 +108,7 @@ class TestDatabaseConnector:
         mock_conn.cursor.return_value.__enter__.side_effect = ValueError(
             "Database connection error"
         )
-        mocker.patch("services.db.connector.get_connection", return_value=mock_conn)
+        mocker.patch("backend.services.db.connector.get_connection", return_value=mock_conn)
 
         # Act & Assert
         with pytest.raises(Exception) as exc_info:
@@ -139,7 +139,7 @@ class TestInsertData:
 
         # Patch get_connection to return our mock
         mocker.patch(
-            "services.db.connector.get_connection", return_value=mock_connection
+            "backend.services.db.connector.get_connection", return_value=mock_connection
         )
 
         # Call the function
@@ -173,7 +173,7 @@ class TestInsertData:
         """Test insertion with empty data list."""
         # Call the function with empty data
         mocker.patch(
-            "services.db.connector.get_connection", return_value=mock_connection
+            "backend.services.db.connector.get_connection", return_value=mock_connection
         )
 
         result = insert_data(

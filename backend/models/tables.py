@@ -4,7 +4,7 @@ Data models for table operations.
 This module defines Pydantic models for table queries and responses.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -17,7 +17,9 @@ class TableQueryParams(BaseModel):
     limit: int = Field(100, description="Maximum number of records to return")
     offset: int = Field(0, description="Number of records to skip")
     columns: str = Field("*", description="Comma-separated list of columns to retrieve")
-    filter_expr: Optional[str] = Field(None, description="Optional SQL WHERE clause")
+    filters: Optional[List[Dict[str, Any]]] = Field(
+        None, description="Structured filters: [{column, op, value}]"
+    )
 
     @field_validator("limit")
     @classmethod
@@ -82,3 +84,24 @@ class TableInsertRequest(BaseModel):
             }
         }
     }
+    model_config.setdefault("populate_by_name", True)
+
+class TableUpdateRequest(BaseModel):
+    """Request model for updating data in a table."""
+    
+    catalog: Optional[str] = None
+    schema_name: Optional[str] = None
+    table: str
+    key_column: str
+    key_value: Any
+    updates: Dict[str, Any]
+
+class TableDeleteRequest(BaseModel):
+    """Request model for deleting data from a table."""
+
+    catalog: Optional[str] = None
+    schema_name: Optional[str] = None
+    table: str
+    key_column: str
+    key_value: Any
+    soft: Optional[bool] = True

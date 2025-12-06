@@ -40,7 +40,7 @@ instance_create = w.database.create_database_instance_and_wait(instance)
 print(f"Database instance created: {instance_create}")
 
 superuser_role = DatabaseInstanceRole(
-    name=w.current_user.me().user_name,
+    name=str(w.current_user.me().user_name),
     identity_type=DatabaseInstanceRoleIdentityType.USER,
     membership_role=DatabaseInstanceRoleMembershipRole.DATABRICKS_SUPERUSER,
     attributes=DatabaseInstanceRoleAttributes(

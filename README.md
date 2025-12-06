@@ -1,99 +1,51 @@
-# FastAPI Example for Databricks Apps
-This is a FastAPI application that demonstrates how API-based applications can be deployed on Databricks Apps runtime.  
-The application is headless and intended to be used with bearer token authentication (OAuth2).
+# da-app-fastapi
 
-Please refer to [Databricks authorization methods](https://docs.databricks.com/aws/en/dev-tools/auth/#databricks-authorization-methods) to obtain an OAuth token appropriately.
+FastAPI example app that demonstrates querying Unity Catalog (Databricks SQL warehouse)
+and performing CRUD-like operations via a SQL connector. The project includes
+linting, type checking, and test workflows suitable for GitHub Actions.
 
-## API Endpoints
-The application provides the following API endpoints:
+Quick notes
+- Uses Databricks SQL connector (Unity Catalog) for table queries.
+- Orders endpoints were refactored to use a SQL connector (no Lakebase runtime
+	required at import time).
+- Tests mock the connector so CI can run without Databricks credentials.
 
-#### API v1
-- `/api/v1/healthcheck` - Returns a response to validate the health of the application
-- `/api/v1/table` - Query data from Databricks tables
-- `/api/v1/resources/create-lakebase-resources` - Create Lakebase resources
-- `/api/v1/resources/delete-lakebase-resources` - Delete Lakebase resources
-- `/api/v1/orders/count` - Get total order count from Lakebase (PostgreSQL) database
-- `/api/v1/orders/sample` - Get sample order keys for testing
-- `/api/v1/orders/pages` - Get orders with traditional page-based pagination
-- `/api/v1/orders/stream` - Get orders with cursor-based pagination (recommended for large datasets)
-- `/api/v1/orders/{order_key}` - Get a specific order by its key
-- `/api/v1/orders/{order_key}/status` - Update order status
+Local development
 
-#### Documentation
-- `/docs` - Interactive OpenAPI documentation
+1. Create and activate virtualenv (PowerShell):
 
-## Running Locally
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
 
-```bash
-python -m venv venv
-.\venv\Scripts\Activate.ps1
+2. Install dependencies:
 
+```powershell
 pip install -r requirements.txt
-
-cp .env.example .env 
-
-python -m uvicorn backend.app:app --reload 
 ```
 
-## Running the Lakebase Example
-❗️**Important**: Following these steps will deploy a Lakebase instance and synced table pipeline in your Databricks workspace that will incur costs.
+3. Run the app locally:
 
-### 1. Create Lakebase Resources
-With the app running and your `.env` file configured:
-1. Navigate to http://localhost:8000/docs (Swagger UI)
-2. Find the `/api/v1/resources/create-lakebase-resources` endpoint
-3. Click **Try it out**
-4. Set `create_resources` to `true` (confirming you understand the costs)
-5. Configure other fields as needed
-6. Click **Execute**
-7. Wait for resource creation (takes several minutes)
-
-### 2. Validate and Test
-Once resources are created:
-1. Check the Databricks UI for: database instance, database, catalog, and `orders_synced` table
-2. Restart your local app: `python -m uvicorn fastapi.app:app --reload`
-3. Return to http://localhost:8000/docs - you should now see the `/orders` endpoints available
-
-### 3. Clean Up Resources
-To avoid ongoing costs:
-1. Navigate to `/api/v1/resources/delete-lakebase-resources` endpoint
-2. Set `confirm_deletion` to `true`
-3. Click **Execute**  
-
-## Running Tests
-```bash
-# Run all tests
-pytest
-
-# Run specific tests
-pytest tests/v1/test_healthcheck.py
+```powershell
+python -m uvicorn backend.app:app --reload
 ```
 
-## Database Architecture
-This application uses a dual database architecture:
+Tests and CI
 
-- **Databricks SQL Warehouse**: Used for Unity Catalog table queries and analytics workloads via the `/api/v1/table` endpoint
-- **Lakebase PostgreSQL Database**: Used for transactional operations and orders management via the `/api/v1/orders/*` endpoints
+- Run tests locally: `pytest -q`
+- CI includes separate workflows for `ruff`, `mypy`, `pytest` and a deploy
+	workflow that can target `dev`, `staging`, or `prod` via branch triggers
+	and manual dispatch.
 
-The Lakebase PostgreSQL database uses automatic token refresh for Databricks database instances with OAuth authentication.
+Contributing
 
-## Configuration
-The application uses environment variables for configuration:
+- Follow ruff and mypy rules; run `ruff .` and `mypy .` before opening PRs.
 
-### Databricks SQL Warehouse (for Unity Catalog queries)
-- `DATABRICKS_WAREHOUSE_ID` - The ID of the Databricks SQL warehouse
-- `DATABRICKS_HOST` - (Optional) The Databricks workspace host
-- `DATABRICKS_TOKEN` - (Optional) The Databricks access token
+Configuration
 
-### Lakebase PostgreSQL Database (for orders management)
-- `LAKEBASE_INSTANCE_NAME` - The name of an existing Databricks database instance or the name of a new instance
-- `LAKEBASE_DATABASE_NAME` - The Lakebase PostgreSQL database name
-- `LAKEBASE_CATALOG_NAME` - The name of the Lakebase catalog
-- `SYNCHED_TABLE_STORAGE_CATALOG` - Catalog where you have permissions to create tables. Used to store metadata from the lakebase synced table pipeline.
-- `SYNCHED_TABLE_STORAGE_SCHEMA` - Schema where you have permissions to create tables. Used to store metadata from the lakebase synced table pipeline.
-- `DATABRICKS_DATABASE_PORT` - (Optional) Database port (default: 5432)
-- `DB_POOL_SIZE` - (Optional) Connection pool size (default: 5)
-- `DB_MAX_OVERFLOW` - (Optional) Max pool overflow (default: 10)
-- `DB_POOL_TIMEOUT` - (Optional) Pool timeout in seconds (default: 10)
-- `DB_COMMAND_TIMEOUT` - (Optional) Command timeout in seconds (default: 30)
-- `DB_POOL_RECYCLE_INTERVAL` - (Optional) Connection recycle interval in seconds (default: 3600)
+The app reads configuration from environment variables. Important ones used in
+development and CI:
+
+- `DATABRICKS_WAREHOUSE_ID` - Databricks SQL warehouse id used by connector
+- `DATABRICKS_HOST` and `DATABRICKS_TOKEN` - optional; tests mock connector

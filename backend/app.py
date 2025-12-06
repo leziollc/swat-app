@@ -21,7 +21,6 @@ from .config.database import (
 from .errors.handlers import register_exception_handlers
 from .routes import api_router
 from .services.db.connector import close_connections
-from sqlmodel import SQLModel
 
 from fastapi import FastAPI, Request
 
@@ -42,11 +41,7 @@ async def lifespan(app: FastAPI):
     
     if database_exists:
         try:
-            init_engine()
-            from config.database import engine
-
-            async with engine.begin() as conn:
-                await conn.run_sync(SQLModel.metadata.create_all)
+            await init_engine()
             await start_token_refresh()
             health_check_task = asyncio.create_task(check_database_health(300))
             logger.info("Database engine initialized and health monitoring started")
@@ -92,7 +87,7 @@ app.include_router(api_router)
 @app.get("/")
 async def root() -> Dict[str, str]:
     return {
-        "app": "Databricks FastAPI  app",
+        "app": "Databricks FastAPI Example",
         "message": "Welcome to the Databricks FastAPI app",
         "docs": "/docs",
     }

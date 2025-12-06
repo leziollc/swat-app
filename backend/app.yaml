@@ -3,12 +3,18 @@ command: ["uvicorn", "app:app"]
 env:
   - name: 'DATABRICKS_WAREHOUSE_ID'
     valueFrom: 'sql_warehouse'
-  
-  # Lakebase connection settings
+
+  # Optional Databricks connection settings used by the SQL connector
+  - name: 'DATABRICKS_HOST'
+    value: ''
+  - name: 'DATABRICKS_TOKEN'
+    value: ''
+
+  # Application settings for optional DB-backed features
   - name: 'LAKEBASE_INSTANCE_NAME'
-    value: 'your_db_instance_name'
+    value: ''
   - name: 'LAKEBASE_DATABASE_NAME'
-    value: 'your_database_name'
+    value: ''
   - name: 'DATABRICKS_DATABASE_PORT'
     value: '5432'
 

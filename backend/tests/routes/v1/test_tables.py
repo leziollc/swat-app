@@ -53,7 +53,7 @@ class TestTableFunction:
             return test_data
 
         # Apply the monkeypatch
-        mocker.patch("routes.v1.tables.query", mock_query)
+        mocker.patch("backend.routes.v1.tables.query", mock_query)
 
         # Call function directly
         result = await table(
@@ -98,7 +98,7 @@ class TestTableFunction:
             raise Exception("Database connection failed")
 
         # Apply the monkeypatch
-        mocker.patch("routes.v1.tables.query", mock_query_error)
+        mocker.patch("backend.routes.v1.tables.query", mock_query_error)
 
         # Call function and expect exception
         with pytest.raises(DatabaseError) as exc_info:
@@ -128,7 +128,7 @@ class TestTableFunction:
             return filter_test_data
 
         # Apply the monkeypatch
-        mocker.patch("routes.v1.tables.query", mock_query_with_filter)
+        mocker.patch("backend.routes.v1.tables.query", mock_query_with_filter)
 
         # Call function with filter
         result = await table(
@@ -165,7 +165,7 @@ class TestInsertTableData:
             return len(data)
 
         # Apply the monkeypatch
-        mocker.patch("routes.v1.tables.insert_data", mock_insert_data)
+        mocker.patch("backend.routes.v1.tables.insert_data", mock_insert_data)
 
         # Create request object
         request = TableInsertRequest(
@@ -196,7 +196,7 @@ class TestInsertTableData:
             return 0  # Return 0 for empty data
 
         # Apply the monkeypatch
-        mocker.patch("routes.v1.tables.insert_data", mock_insert_data)
+        mocker.patch("backend.routes.v1.tables.insert_data", mock_insert_data)
 
         # Create request object
         request = TableInsertRequest(
@@ -246,7 +246,7 @@ class TestInsertTableData:
             raise Exception("Database connection failed")
 
         # Apply the monkeypatch
-        mocker.patch("routes.v1.tables.insert_data", mock_insert_data_error)
+        mocker.patch("backend.routes.v1.tables.insert_data", mock_insert_data_error)
 
         # Create request object
         request = TableInsertRequest(

@@ -17,19 +17,15 @@ def create_router(database_exists: bool = False) -> APIRouter:
     router.include_router(healthcheck_router)
     router.include_router(lakebase_router)
     
-    # Conditionally include database-dependent endpoints
-    if database_exists:
-        try:
-            from .orders import router as orders_router
-            from .tables import router as tables_router
-            
-            router.include_router(tables_router)
-            router.include_router(orders_router)
-            logger.info("Database-dependent endpoints (orders, tables) registered successfully")
-        except Exception as e:
-            logger.error(f"Failed to register database-dependent endpoints: {e}")
-    else:
-        logger.info("Database instance not found - skipping orders and tables endpoints")
-        logger.info("Create Lakebase resources using POST /api/v1/resources/create-lakebase-resources")
+    # Include database-related endpoints (orders, tables)
+    try:
+        from .orders import router as orders_router
+        from .tables import router as tables_router
+
+        router.include_router(tables_router, prefix="/tables")
+        router.include_router(orders_router, prefix="/orders")
+        logger.info("Database-related endpoints (orders, tables) registered")
+    except Exception as e:
+        logger.error(f"Failed to register orders/tables endpoints: {e}")
     
     return router

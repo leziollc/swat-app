@@ -1,371 +1,255 @@
-import logging
+from typing import Any, Dict, List, Optional
 
-from ...config.database import get_async_db
-from ...models.orders import (
-    CursorPaginationInfo,
-    Order,
-    OrderCount,
-    OrderListCursorResponse,
-    OrderListResponse,
-    OrderRead,
-    OrderSample,
-    OrderStatusUpdate,
-    OrderStatusUpdateResponse,
-    PaginationInfo,
+from fastapi import APIRouter, Depends
+
+from ...config.settings import get_settings
+from ...errors.exceptions import ConfigurationError, DatabaseError
+from ...models.tables import (
+    TableQueryParams,
+    TableResponse,
+    TableInsertRequest,
+    TableUpdateRequest,
+    TableDeleteRequest,
 )
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from ...services.db import connector as db_connector
+from ...services.db.sql_helpers import build_where_clause
+import json
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-
-logger = logging.getLogger(__name__)
+import re
+from datetime import datetime
+import os
 
 router = APIRouter(tags=["orders"])
 
 
-@router.get("/count", response_model=OrderCount, summary="Get total order count")
-async def get_order_count(db: AsyncSession = Depends(get_async_db)):
-    """
-    Get the total number of orders in the database.
+IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
-    Returns:
-        OrderCount: The total count of orders in the database
 
-    Raises:
-        HTTPException: If the query fails
-    """
+def _validate_identifier(name: str) -> None:
+    if not IDENT_RE.match(name):
+        raise ValueError(f"Invalid identifier: {name}")
+
+
+def _table_path(catalog: Optional[str], schema: Optional[str], table: str) -> str:
+    if not catalog or not schema:
+        raise ValueError("Catalog and schema must be provided")
+    return f"{catalog}.{schema}.{table}"
+
+
+def _has_column(table_path: str, column: str, warehouse_id: str) -> bool:
     try:
-        stmt = select(func.count(Order.o_orderkey))
-        result = await db.execute(stmt)
-        count = result.scalar()
-        return OrderCount(total_orders=count)
-    except Exception as e:
-        logger.error(f"Error getting order count: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve order count")
-
-
-@router.get("/sample", response_model=OrderSample, summary="Get 5 random order keys")
-async def get_sample_orders(db: AsyncSession = Depends(get_async_db)):
-    """
-    Get 5 sample order keys for testing and development purposes.
-
-    Returns:
-        OrderSample: A list of 5 order keys from the database
-
-    Raises:
-        HTTPException: If the query fails
-    """
-    try:
-        stmt = select(Order.o_orderkey).limit(5)
-        result = await db.execute(stmt)
-        order_keys = result.scalars().all()
-        return OrderSample(sample_order_keys=order_keys)
-    except Exception as e:
-        logger.error(f"Error getting sample orders: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve sample orders")
-
-
-@router.get(
-    "/pages",
-    response_model=OrderListResponse,
-    summary="Get orders with page-based pagination",
-)
-async def get_orders_by_page(
-    page: int = Query(1, ge=1, description="Page number (1-based)"),
-    page_size: int = Query(
-        100, ge=1, le=1000, description="Number of records per page (max 1000)"
-    ),
-    include_count: bool = Query(
-        True, description="Include total count for pagination info"
-    ),
-    db: AsyncSession = Depends(get_async_db),
-):
-    """
-    Get orders using traditional page-based pagination.
-
-    Args:
-        page: Page number (1-based)
-        page_size: Number of records per page (max 1000)
-        include_count: Include total count for pagination info
-        db: Database session
-
-    Returns:
-        OrderListResponse: Orders with pagination information
-
-    Raises:
-        HTTPException: If the query fails
-
-    Best for:
-        - Small to medium datasets
-        - Building traditional pagination UI with page numbers
-        - When users need to jump to specific pages
-
-    Usage:
-        - `/orders/pages?page=1&page_size=100`
-        - `/orders/pages?page=5&page_size=50&include_count=false`
-    """
-    try:
-        if include_count:
-            count_stmt = select(func.count(Order.o_orderkey))
-            count_result = await db.execute(count_stmt)
-            total_count = count_result.scalar()
-            total_pages = (total_count + page_size - 1) // page_size
+        # DESCRIBE returns rows describing columns; search for column name
+        desc = db_connector.query(f"DESCRIBE {table_path}", warehouse_id=warehouse_id, as_dict=True)
+        # Normalize to list of dicts
+        if isinstance(desc, list):
+            rows = desc
         else:
-            total_count = -1
-            total_pages = -1
+            # If a DataFrame was returned, coerce
+            try:
+                import pandas as _pd
 
-        offset = (page - 1) * page_size
-        stmt = (
-            select(
-                Order.o_orderkey,
-                Order.o_custkey,
-                Order.o_orderstatus,
-                Order.o_totalprice,
-                Order.o_orderdate,
-                Order.o_orderpriority,
-                Order.o_clerk,
-                Order.o_shippriority,
-                Order.o_comment,
-            )
-            .order_by(Order.o_orderkey)
-            .offset(offset)
-            .limit(page_size + 1)  # Get one extra to check has_next
-        )
+                rows = _pd.DataFrame(desc).to_dict(orient="records")
+            except Exception:
+                rows = []
 
-        result = await db.execute(stmt)
-        all_orders = result.all()
-
-        has_next = len(all_orders) > page_size
-        orders_data = all_orders[:page_size]
-        has_previous = page > 1
-
-        orders = [
-            OrderRead(
-                o_orderkey=row[0],
-                o_custkey=row[1],
-                o_orderstatus=row[2],
-                o_totalprice=row[3],
-                o_orderdate=row[4],
-                o_orderpriority=row[5],
-                o_clerk=row[6],
-                o_shippriority=row[7],
-                o_comment=row[8],
-            )
-            for row in orders_data
-        ]
-
-        next_cursor = orders[-1].o_orderkey if orders and has_next else None
-        previous_cursor = (
-            orders[0].o_orderkey - page_size if orders and has_previous else None
-        )
-
-        pagination_info = PaginationInfo(
-            page=page,
-            page_size=page_size,
-            total_pages=total_pages,
-            total_count=total_count,
-            has_next=has_next,
-            has_previous=has_previous,
-            next_cursor=next_cursor,
-            previous_cursor=max(0, previous_cursor) if previous_cursor else None,
-        )
-
-        return OrderListResponse(orders=orders, pagination=pagination_info)
-
-    except Exception as e:
-        logger.error(f"Error getting page-based orders: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve orders")
+        for row in rows:
+            # Different dialects may name the column differently
+            if any(column == v for v in row.values()):
+                return True
+        return False
+    except Exception:
+        return False
 
 
-@router.get(
-    "/stream",
-    response_model=OrderListCursorResponse,
-    summary="Get orders with cursor-based pagination",
-)
-async def get_orders_by_cursor(
-    cursor: int = Query(
-        0, ge=0, description="Start after this order key (0 for beginning)"
-    ),
-    page_size: int = Query(
-        100, ge=1, le=1000, description="Number of records to fetch (max 1000)"
-    ),
-    db: AsyncSession = Depends(get_async_db),
+@router.get("/read", response_model=TableResponse)
+async def read_orders(
+    catalog: str,
+    schema: str,
+    table: str,
+    limit: int = 100,
+    offset: int = 0,
+    columns: str = "*",
+    filters: Optional[str] = None,
+    settings=Depends(get_settings),
 ):
-    """
-    Get orders using efficient cursor-based pagination.
+    # Validate settings
+    warehouse_id = settings.databricks_warehouse_id
+    if not warehouse_id:
+        raise ConfigurationError(message="SQL warehouse ID not configured")
 
-    Args:
-        cursor: Start after this order key (0 for beginning)
-        page_size: Number of records to fetch (max 1000)
-        db: Database session
-
-    Returns:
-        OrderListCursorResponse: Orders with cursor pagination information
-
-    Raises:
-        HTTPException: If the query fails
-
-    Best for:
-        - Large datasets (millions of records)
-        - High-performance applications
-        - Infinite scroll UIs
-        - Real-time data feeds
-
-    Usage:
-        - First page: `/orders/stream?cursor=0&page_size=100`
-        - Next page: `/orders/stream?cursor=100&page_size=100`
-        - Jump to key: `/orders/stream?cursor=12345&page_size=100` (shows records after key 12345)
-    """
+    # Validate identifiers
     try:
-        stmt = (
-            select(
-                Order.o_orderkey,
-                Order.o_custkey,
-                Order.o_orderstatus,
-                Order.o_totalprice,
-                Order.o_orderdate,
-                Order.o_orderpriority,
-                Order.o_clerk,
-                Order.o_shippriority,
-                Order.o_comment,
-            )
-            .where(Order.o_orderkey > cursor)
-            .order_by(Order.o_orderkey)
-            .limit(page_size + 1)  # Get one extra to check has_next
-        )
+        _validate_identifier(catalog)
+        _validate_identifier(schema)
+        _validate_identifier(table)
+    except ValueError as ve:
+        raise DatabaseError(message=str(ve))
 
-        result = await db.execute(stmt)
-        all_orders = result.all()
+    params = TableQueryParams(
+        catalog=catalog, schema=schema, table=table, limit=limit, offset=offset, columns=columns, filters=None
+    )
 
-        has_next = len(all_orders) > page_size
-        orders_data = all_orders[:page_size]
-        has_previous = cursor > 0
+    table_path = _table_path(params.catalog, params.schema_name, params.table)
 
-        orders = [
-            OrderRead(
-                o_orderkey=row[0],
-                o_custkey=row[1],
-                o_orderstatus=row[2],
-                o_totalprice=row[3],
-                o_orderdate=row[4],
-                o_orderpriority=row[5],
-                o_clerk=row[6],
-                o_shippriority=row[7],
-                o_comment=row[8],
-            )
-            for row in orders_data
-        ]
+    # If table has is_deleted column, by default exclude deleted rows
+    has_is_deleted = _has_column(table_path, "is_deleted", warehouse_id)
 
-        next_cursor = orders[-1].o_orderkey if orders and has_next else None
-        previous_cursor = max(0, cursor - page_size) if has_previous else None
+    # Parse client filters (JSON string) if provided
+    user_filters: Optional[List[Dict[str, Any]]] = None
+    if filters:
+        try:
+            parsed = json.loads(filters)
+            if isinstance(parsed, list):
+                user_filters = parsed
+        except Exception:
+            raise DatabaseError(message="Invalid filters JSON payload")
 
-        pagination_info = CursorPaginationInfo(
-            page_size=page_size,
-            has_next=has_next,
-            has_previous=has_previous,
-            next_cursor=next_cursor,
-            previous_cursor=previous_cursor,
-        )
+    # If table has is_deleted column, append exclusion to filters
+    if has_is_deleted:
+        deleted_filter = {"column": "is_deleted", "op": "=", "value": False}
+        if user_filters:
+            user_filters.append(deleted_filter)
+        else:
+            user_filters = [deleted_filter]
 
-        return OrderListCursorResponse(orders=orders, pagination=pagination_info)
+    where_clause, params_list = build_where_clause(user_filters)
 
-    except Exception as e:
-        logger.error(f"Error getting cursor-based orders: {e}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve orders")
+    sql_query = f"SELECT {params.columns} FROM {table_path} {where_clause} LIMIT {params.limit} OFFSET {params.offset}"
 
-
-@router.get("/{order_key}", response_model=OrderRead, summary="Get an order by its key")
-async def read_order(order_key: int, db: AsyncSession = Depends(get_async_db)):
-    """
-    Fetch a single order by its key, returning all order fields.
-
-    Args:
-        order_key: The unique key of the order to retrieve
-        db: Database session
-
-    Returns:
-        OrderRead: Complete order information
-
-    Raises:
-        HTTPException: 400 for invalid order key, 404 if order not found, 500 for database errors
-    """
     try:
-        if order_key <= 0:
-            raise HTTPException(status_code=400, detail="Invalid order key provided")
+        results = db_connector.query(sql_query, warehouse_id=warehouse_id, params=params_list, as_dict=True)
 
-        stmt = select(Order).where(Order.o_orderkey == order_key)
-        result = await db.execute(stmt)
-        order = result.scalars().first()
+        # Normalize results to list[dict]
+        import pandas as _pd
 
-        if not order:
-            logger.info(f"Order not found: {order_key}")
-            raise HTTPException(
-                status_code=404, detail=f"Order with key '{order_key}' not found"
-            )
+        if isinstance(results, _pd.DataFrame):
+            data_list = results.to_dict(orient="records")
+        else:
+            data_list = results
 
-        return order
-
-    except HTTPException:
-        raise
+        return TableResponse(data=data_list, count=len(data_list), total=None)
     except Exception as e:
-        logger.error(f"Unexpected error fetching order {order_key}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error occurred")
+        raise DatabaseError(message=f"Failed to query orders table: {e}")
 
 
-@router.post(
-    "/{order_key}/status",
-    response_model=OrderStatusUpdateResponse,
-    summary="Update order status",
-)
-async def update_order_status(
-    order_key: int,
-    status_data: OrderStatusUpdate,
-    db: AsyncSession = Depends(get_async_db),
-):
-    """
-    Update the status for a specific order.
+@router.post("/write", response_model=TableResponse)
+async def write_orders(request: TableInsertRequest, settings=Depends(get_settings)):
+    warehouse_id = settings.databricks_warehouse_id
+    if not warehouse_id:
+        raise ConfigurationError(message="SQL warehouse ID not configured")
 
-    Args:
-        order_key: The key of the order to update
-        status_data: The new order status data
-        db: Database session
-
-    Returns:
-        OrderStatusUpdateResponse: Confirmation of the status update
-
-    Raises:
-        HTTPException: 400 for invalid order key, 404 if order not found, 500 for database errors
-    """
     try:
-        if order_key <= 0:
-            raise HTTPException(status_code=400, detail="Invalid order key provided")
+        _validate_identifier(request.catalog)
+        _validate_identifier(request.schema_name)
+        _validate_identifier(request.table)
+    except ValueError as ve:
+        raise DatabaseError(message=str(ve))
 
-        check_stmt = select(Order).where(Order.o_orderkey == order_key)
-        check_result = await db.execute(check_stmt)
-        existing_order = check_result.scalars().first()
+    # Add audit fields if not present
+    created_by = os.getenv("DATABRICKS_USER") or os.getenv("DATABRICKS_CONFIG_PROFILE") or "api"
+    now = datetime.utcnow().isoformat()
+    rows = []
+    for r in request.data:
+        rec = dict(r)
+        if "created_at" not in rec:
+            rec["created_at"] = now
+        if "created_by" not in rec:
+            rec["created_by"] = created_by
+        rows.append(rec)
 
-        if not existing_order:
-            logger.info(f"Order not found for update: {order_key}")
-            raise HTTPException(
-                status_code=404, detail=f"Order with key '{order_key}' not found"
-            )
+    table_path = _table_path(request.catalog, request.schema_name, request.table)
 
-        existing_order.o_orderstatus = status_data.o_orderstatus
-        await db.commit()
-        await db.refresh(existing_order)
-
-        logger.info(
-            f"Successfully updated order {order_key} status to {status_data.o_orderstatus}"
-        )
-
-        return OrderStatusUpdateResponse(
-            o_orderkey=order_key,
-            o_orderstatus=status_data.o_orderstatus,
-            message="Order status updated successfully",
-        )
-
-    except HTTPException:
-        raise
+    try:
+        inserted = db_connector.insert_data(table_path=table_path, data=rows, warehouse_id=warehouse_id)
+        if inserted < 0:
+            inserted = len(rows)
+        return TableResponse(data=rows, count=inserted, total=inserted)
     except Exception as e:
-        logger.error(f"Error updating status for order {order_key}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to update order status")
+        raise DatabaseError(message=f"Failed to insert into orders table: {e}")
+
+
+@router.put("/update", response_model=TableResponse)
+async def update_orders(request: TableUpdateRequest, settings=Depends(get_settings)):
+    warehouse_id = settings.databricks_warehouse_id
+    if not warehouse_id:
+        raise ConfigurationError(message="SQL warehouse ID not configured")
+
+    try:
+        _validate_identifier(request.catalog or "default_catalog")
+        _validate_identifier(request.schema_name or "default_schema")
+        _validate_identifier(request.table)
+        _validate_identifier(request.key_column)
+    except ValueError as ve:
+        raise DatabaseError(message=str(ve))
+
+    catalog = request.catalog or os.getenv("DATABRICKS_CATALOG")
+    schema = request.schema_name or os.getenv("DATABRICKS_SCHEMA")
+    table_path = _table_path(catalog, schema, request.table)
+
+    # Add updated metadata
+    now = datetime.utcnow().isoformat()
+    updated_by = os.getenv("DATABRICKS_USER") or os.getenv("DATABRICKS_CONFIG_PROFILE") or "api"
+    updates = dict(request.updates)
+    updates["updated_at"] = now
+    updates["updated_by"] = updated_by
+
+    set_clauses = []
+    params: List[Any] = []
+    for k, v in updates.items():
+        _validate_identifier(k)
+        set_clauses.append(f"{k} = ?")
+        params.append(v)
+
+    params.append(request.key_value)
+
+    set_sql = ", ".join(set_clauses)
+    sql_query = f"UPDATE {table_path} SET {set_sql} WHERE {request.key_column} = ?"
+
+    try:
+        db_connector.query(sql_query, warehouse_id=warehouse_id, params=params)
+        # Return the updates as confirmation
+        return TableResponse(data=[updates], count=1, total=None)
+    except Exception as e:
+        raise DatabaseError(message=f"Failed to update orders table: {e}")
+
+
+@router.delete("/delete", response_model=TableResponse)
+async def delete_orders(request: TableDeleteRequest, settings=Depends(get_settings)):
+    warehouse_id = settings.databricks_warehouse_id
+    if not warehouse_id:
+        raise ConfigurationError(message="SQL warehouse ID not configured")
+
+    try:
+        _validate_identifier(request.catalog or "default_catalog")
+        _validate_identifier(request.schema_name or "default_schema")
+        _validate_identifier(request.table)
+        _validate_identifier(request.key_column)
+    except ValueError as ve:
+        raise DatabaseError(message=str(ve))
+
+    catalog = request.catalog or os.getenv("DATABRICKS_CATALOG")
+    schema = request.schema_name or os.getenv("DATABRICKS_SCHEMA")
+    table_path = _table_path(catalog, schema, request.table)
+
+    # If soft delete requested and table has is_deleted, perform an update
+    if request.soft:
+        has_is_deleted = _has_column(table_path, "is_deleted", warehouse_id)
+        if has_is_deleted:
+            now = datetime.utcnow().isoformat()
+            updated_by = os.getenv("DATABRICKS_USER") or os.getenv("DATABRICKS_CONFIG_PROFILE") or "api"
+            sql_query = f"UPDATE {table_path} SET is_deleted = true, updated_at = ?, updated_by = ? WHERE {request.key_column} = ?"
+            params = [now, updated_by, request.key_value]
+            try:
+                db_connector.query(sql_query, warehouse_id=warehouse_id, params=params)
+                return TableResponse(data=[{"is_deleted": True}], count=1, total=None)
+            except Exception as e:
+                raise DatabaseError(message=f"Failed to soft-delete orders record: {e}")
+
+    # Otherwise perform hard delete
+    try:
+        sql_query = f"DELETE FROM {table_path} WHERE {request.key_column} = ?"
+        params = [request.key_value]
+        db_connector.query(sql_query, warehouse_id=warehouse_id, params=params)
+        return TableResponse(data=[], count=1, total=None)
+    except Exception as e:
+        raise DatabaseError(message=f"Failed to delete orders record: {e}")
