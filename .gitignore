@@ -141,3 +141,12 @@ ml-models.ipr
 
 .DS_Store
 .databricks
+# GitHub Actions artifacts
+.github/workflows/
+
+# OS files
+Thumbs.db
+ehthumbs.db
+
+# ruff
+.ruff_cache/
