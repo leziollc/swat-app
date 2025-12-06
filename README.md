@@ -29,7 +29,7 @@ The sample application provides the following API endpoints:
 ```bash
 # Create and activate virtual environment
 python -m venv venv
-source venv/bin/activate
+.\venv\Scripts\Activate.ps1
 
 # Install dependencies within active venv
 pip install -r requirements.txt
