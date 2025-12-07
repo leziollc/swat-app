@@ -9,6 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError as PydanticValidationError
 
+from ..services.logger import db_logger
 from .exceptions import BaseAppException
 
 
@@ -25,6 +26,21 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: BaseAppException
     ) -> JSONResponse:
         """Handle BaseAppException and its subclasses."""
+        import time
+        start_time = getattr(request.state, "start_time", None)
+        execution_time_ms = (time.perf_counter() - start_time) * 1000 if start_time else None
+
+        db_logger.log_error(
+            exc,
+            request=request,
+            level="ERROR",
+            additional_context={
+                "status_code": exc.status_code,
+                "execution_time_ms": execution_time_ms,
+                **exc.details,
+            },
+        )
+
         return JSONResponse(
             status_code=exc.status_code,
             content={
@@ -39,12 +55,40 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: PydanticValidationError
     ) -> JSONResponse:
         """Handle Pydantic validation errors."""
+        from typing import Any
+        errors = []
+        for error in exc.errors():
+            error_dict: dict[str, Any] = {
+                "type": error["type"],
+                "loc": list(error["loc"]),
+                "msg": error["msg"],
+            }
+            if "input" in error:
+                error_dict["input"] = str(error["input"])
+            if "ctx" in error:
+                error_dict["ctx"] = {k: str(v) for k, v in error["ctx"].items()}
+            errors.append(error_dict)
+
+        import time
+        start_time = getattr(request.state, "start_time", None)
+        execution_time_ms = (time.perf_counter() - start_time) * 1000 if start_time else None
+
+        db_logger.log_error(
+            exc,
+            request=request,
+            level="WARNING",
+            additional_context={
+                "status_code": 400,
+                "execution_time_ms": execution_time_ms,
+            },
+        )
+
         return JSONResponse(
             status_code=400,
             content={
                 "error": True,
                 "message": "Validation error",
-                "details": {"errors": exc.errors()},
+                "details": {"errors": errors},
             },
         )
 
@@ -53,6 +97,20 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: Exception
     ) -> JSONResponse:
         """Handle all unhandled exceptions."""
+        import time
+        start_time = getattr(request.state, "start_time", None)
+        execution_time_ms = (time.perf_counter() - start_time) * 1000 if start_time else None
+
+        db_logger.log_error(
+            exc,
+            request=request,
+            level="ERROR",
+            additional_context={
+                "status_code": 500,
+                "execution_time_ms": execution_time_ms,
+            },
+        )
+
         return JSONResponse(
             status_code=500,
             content={

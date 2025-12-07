@@ -1,30 +1,41 @@
-command: ["uvicorn", "app:app"]
+command: ["uvicorn", "backend.app:app", "--host", "0.0.0.0", "--port", "8000"]
 
 env:
+  # Required: SQL Warehouse ID for database connections
   - name: 'DATABRICKS_WAREHOUSE_ID'
     valueFrom: 'sql_warehouse'
 
-  # Optional Databricks connection settings used by the SQL connector
+  # Required: User profile name for audit trail (inserted_by, updated_by, deleted_by)
+  - name: 'DATABRICKS_CONFIG_PROFILE'
+    value: 'api_user'
+
+  # Optional: Default catalog name (can be overridden per request)
+  - name: 'DATABRICKS_CATALOG'
+    value: ''
+
+  # Optional: Default schema name (can be overridden per request)
+  - name: 'DATABRICKS_SCHEMA'
+    value: ''
+
+  # Optional: Alternative to DATABRICKS_CONFIG_PROFILE for audit trail
+  - name: 'DATABRICKS_USER'
+    value: ''
+
+  # Optional: Databricks connection settings (used by SQL connector)
   - name: 'DATABRICKS_HOST'
     value: ''
   - name: 'DATABRICKS_TOKEN'
     value: ''
 
-  # Application settings for optional DB-backed features
-  - name: 'LAKEBASE_INSTANCE_NAME'
-    value: ''
-  - name: 'LAKEBASE_DATABASE_NAME'
-    value: ''
-  - name: 'DATABRICKS_DATABASE_PORT'
-    value: '5432'
+  # Database Logging Configuration
+  # Enable/disable error logging to Databricks table
+  - name: 'DATABRICKS_LOGGING_ENABLED'
+    value: 'true'
 
-  - name: 'DB_POOL_SIZE'
-    value: '5'
-  - name: 'DB_MAX_OVERFLOW'
-    value: '10'
-  - name: 'DB_COMMAND_TIMEOUT'
-    value: '30'
-  - name: 'DB_POOL_TIMEOUT'
-    value: '10'
-  - name: 'DB_POOL_RECYCLE_INTERVAL'
-    value: '3600'
+  # Optional: Catalog for api_log table (defaults to DATABRICKS_CATALOG)
+  - name: 'DATABRICKS_LOG_CATALOG'
+    value: ''
+
+  # Optional: Schema for api_log table (defaults to DATABRICKS_SCHEMA)
+  - name: 'DATABRICKS_LOG_SCHEMA'
+    value: ''
