@@ -5,7 +5,7 @@ This module defines the application settings that can be set
 via environment variables.
 """
 
-from typing import Optional
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
 
@@ -14,20 +14,9 @@ class Settings(BaseSettings):
     """Application settings."""
 
     # Databricks SQL warehouse ID
-    databricks_warehouse_id: Optional[str] = Field(
+    databricks_warehouse_id: str | None = Field(
         default=None,
         description="The ID of the Databricks SQL warehouse to connect to",
-    )
-
-    # Default values for pagination
-    default_limit: int = Field(
-        default=100,
-        description="Default number of records to return in paginated responses",
-    )
-
-    max_limit: int = Field(
-        default=1000,
-        description="Maximum number of records that can be returned in a single request",
     )
 
     # Use model_config instead of class Config

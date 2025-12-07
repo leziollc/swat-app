@@ -17,13 +17,11 @@ class TestMainApplication:
         response = client.get("/")
         data = response.json()
 
-        # Check required fields
         assert "app" in data
         assert "message" in data
         assert "docs" in data
 
-        # Check expected values
-        assert data["app"] == "Databricks FastAPI Example"
+        assert data["app"] == "Databricks FastAPI App (Developed by Dami Alebiosu)"
         assert "Welcome" in data["message"]
         assert data["docs"] == "/docs"
 

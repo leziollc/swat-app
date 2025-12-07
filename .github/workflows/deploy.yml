@@ -15,28 +15,34 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
+      
       - name: Create asset bundle (zip)
         run: |
-          zip -r repo-asset-bundle.zip . -x .git/*
+          zip -r repo-asset-bundle.zip \
+            backend/ \
+            .github/ \
+            requirements.txt \
+            pytest.ini \
+            README.md \
+            .env.example \
+            -x "*.pyc" -x "*__pycache__*" -x "*.git*"
+      
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: repo-asset-bundle
           path: repo-asset-bundle.zip
-      - name: Deploy (placeholder)
+          retention-days: 30
+      
+      - name: Deploy summary
         env:
           TARGET: ${{ github.event.inputs.target || 'dev' }}
         run: |
-          echo "Deploying to $TARGET environment"
-          # Place your deployment commands here. Examples:
-          # - SSH to server and deploy
-          # - Use cloud provider CLI to push artifact
-          # - Trigger an external CD system
+          echo "✅ Asset bundle created successfully"
+          echo "📦 Artifact: repo-asset-bundle.zip"
+          echo "🎯 Target environment: $TARGET"
+          echo ""
+          echo "To deploy, download the artifact and:"
+          echo "1. Extract the zip file"
+          echo "2. Deploy to Databricks Apps or your target platform"
+          echo "3. Set environment variables (DATABRICKS_WAREHOUSE_ID, etc.)"
