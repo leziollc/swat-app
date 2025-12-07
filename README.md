@@ -344,11 +344,18 @@ Insert data into a table with optional auto-creation of table.
 ```json
 {
   "error": true,
-  "message": "Schema validation failed: Record 0: Column 'order_id' expects integer, got str",
+  "message": "Schema validation failed: Record 0: Column 'api10' expects integer, got str",
   "details": {
     "expected_schema": [
-      {"name": "order_id", "type": "BIGINT", "nullable": false},
-      {"name": "amount", "type": "DOUBLE", "nullable": true}
+      {"name": "api10", "type": "BIGINT", "nullable": false},
+      {"name": "api14", "type": "BIGINT", "nullable": false},
+      {"name": "wellname", "type": "STRING", "nullable": false},
+      {"name": "spuddate", "type": "STRING", "nullable": true},
+      {"name": "firstproddate", "type": "STRING", "nullable": true},
+      {"name": "compldate", "type": "STRING", "nullable": true},
+      {"name": "oileur", "type": "DOUBLE", "nullable": true},
+      {"name": "gaseur", "type": "DOUBLE", "nullable": true},
+      {"name": "wellspacing", "type": "DOUBLE", "nullable": true}
     ]
   }
 }
@@ -367,7 +374,7 @@ BINARY, ARRAY, MAP, STRUCT                  # Complex types
 **Response:**
 ```json
 {
-  "message": "Inserted 1 record(s) into my_catalog.my_schema.customers",
+  "message": "Inserted 1 record(s) into my_catalog.my_schema.my_table",
   "count": 1
 }
 ```
