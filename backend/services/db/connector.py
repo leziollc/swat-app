@@ -6,17 +6,17 @@ and execute queries against Unity Catalog tables.
 """
 
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import pandas as pd
 from databricks import sql
 from databricks.sdk.core import Config
 
 # Lazily load Databricks SDK Config to avoid import-time auth errors
-_cfg: Optional[Config] = None
+_cfg: Config | None = None
 
 
-def _get_config() -> Optional[Config]:
+def _get_config() -> Config | None:
     global _cfg
     if _cfg is not None:
         return _cfg
@@ -70,8 +70,8 @@ def close_connections():
 
 
 def query(
-    sql_query: str, warehouse_id: str, as_dict: bool = True, params: Optional[List[Any]] = None
-) -> Union[List[Dict], pd.DataFrame]:
+    sql_query: str, warehouse_id: str, as_dict: bool = True, params: list[Any] | None = None
+) -> list[dict] | pd.DataFrame:
     """
     Execute a query against a Databricks SQL Warehouse.
 
@@ -112,7 +112,7 @@ def query(
         raise Exception(f"Query failed: {str(e)}")
 
 
-def insert_data(table_path: str, data: List[Dict], warehouse_id: str) -> int:
+def insert_data(table_path: str, data: list[dict], warehouse_id: str) -> int:
     """
     Insert data into a Databricks Unity Catalog table.
 
@@ -142,8 +142,8 @@ def insert_data(table_path: str, data: List[Dict], warehouse_id: str) -> int:
             placeholders = ", ".join(["?"] * len(columns))
 
             # Build the INSERT statement with multiple VALUES clauses
-            values_clauses: List[str] = []
-            all_values: List[Any] = []
+            values_clauses: list[str] = []
+            all_values: list[Any] = []
 
             for record in data:
                 values_clauses.append(f"({placeholders})")

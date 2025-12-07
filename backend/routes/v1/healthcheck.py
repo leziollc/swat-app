@@ -1,7 +1,6 @@
 """Healthcheck endpoint for the V1 API."""
 
-from datetime import datetime, timezone
-from typing import Dict
+from datetime import UTC, datetime
 
 from fastapi import APIRouter
 
@@ -9,6 +8,6 @@ router = APIRouter()
 
 
 @router.get("/healthcheck")
-async def healthcheck() -> Dict[str, str]:
+async def healthcheck() -> dict[str, str]:
     """Return the API status."""
-    return {"status": "OK", "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {"status": "OK", "timestamp": datetime.now(UTC).isoformat()}

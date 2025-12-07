@@ -2,7 +2,8 @@
 
 import pandas as pd
 import pytest
-from ....services.db.connector import get_connection, query, insert_data, close_connections
+
+from backend.services.db.connector import close_connections, get_connection, insert_data, query
 
 
 @pytest.fixture
@@ -194,7 +195,7 @@ class TestInsertData:
 
         # Call the function and expect exception
         mocker.patch(
-            "services.db.connector.get_connection", return_value=mock_connection
+            "backend.services.db.connector.get_connection", return_value=mock_connection
         )
 
         with pytest.raises(Exception) as exc_info:
@@ -217,7 +218,7 @@ class TestInsertData:
 
         # Call the function and expect exception
         mocker.patch(
-            "services.db.connector.get_connection", return_value=mock_connection
+            "backend.services.db.connector.get_connection", return_value=mock_connection
         )
 
         with pytest.raises(Exception) as exc_info:

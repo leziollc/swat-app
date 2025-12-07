@@ -39,12 +39,27 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request, exc: PydanticValidationError
     ) -> JSONResponse:
         """Handle Pydantic validation errors."""
+        # Convert errors to JSON-serializable format
+        from typing import Any
+        errors = []
+        for error in exc.errors():
+            error_dict: dict[str, Any] = {
+                "type": error["type"],
+                "loc": list(error["loc"]),
+                "msg": error["msg"],
+            }
+            if "input" in error:
+                error_dict["input"] = str(error["input"])
+            if "ctx" in error:
+                error_dict["ctx"] = {k: str(v) for k, v in error["ctx"].items()}
+            errors.append(error_dict)
+
         return JSONResponse(
             status_code=400,
             content={
                 "error": True,
                 "message": "Validation error",
-                "details": {"errors": exc.errors()},
+                "details": {"errors": errors},
             },
         )
 

@@ -1,25 +1,9 @@
-from typing import Any, Dict, List, Optional, Tuple
-
-
-class FilterCondition:
-    """Simple filter condition for structured filtering.
-
-    Attributes:
-        column: column name (identifier)
-        op: SQL operator as string, e.g. '=', '>', '<', 'LIKE', 'IN'
-        value: value or list of values for the operator
-    """
-
-    def __init__(self, column: str, op: str, value: Any):
-        self.column = column
-        self.op = op.upper()
-        self.value = value
-
+from typing import Any
 
 IDENT_OPS = {"=", "!=", ">", "<", ">=", "<=", "LIKE", "IN"}
 
 
-def _validate_identifier(name: Optional[str]) -> None:
+def _validate_identifier(name: str | None) -> None:
     if not isinstance(name, str) or not name:
         raise ValueError("Invalid identifier")
     # conservative check
@@ -30,7 +14,7 @@ def _validate_identifier(name: Optional[str]) -> None:
             raise ValueError("Invalid identifier")
 
 
-def build_where_clause(filters: Optional[List[Dict[str, Any]]]) -> Tuple[str, List[Any]]:
+def build_where_clause(filters: list[dict[str, Any]] | None) -> tuple[str, list[Any]]:
     """Build a parameterized WHERE clause from structured filters.
 
     filters: list of dicts with keys: column, op, value
@@ -39,8 +23,8 @@ def build_where_clause(filters: Optional[List[Dict[str, Any]]]) -> Tuple[str, Li
     if not filters:
         return "", []
 
-    parts: List[str] = []
-    params: List[Any] = []
+    parts: list[str] = []
+    params: list[Any] = []
 
     for cond in filters:
         column = cond.get("column")

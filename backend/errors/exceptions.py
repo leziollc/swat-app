@@ -5,7 +5,7 @@ This module defines custom exceptions that can be raised by the application
 and handled by the global exception handlers.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class BaseAppException(Exception):
@@ -15,7 +15,7 @@ class BaseAppException(Exception):
         self,
         message: str,
         status_code: int = 500,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ):
         self.message = message
         self.status_code = status_code
@@ -29,7 +29,7 @@ class DatabaseError(BaseAppException):
     def __init__(
         self,
         message: str = "Database operation failed",
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message=message, status_code=500, details=details)
 
@@ -40,17 +40,6 @@ class ConfigurationError(BaseAppException):
     def __init__(
         self,
         message: str = "Missing or invalid configuration",
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message=message, status_code=500, details=details)
-
-
-class ValidationError(BaseAppException):
-    """Exception raised when input validation fails."""
-
-    def __init__(
-        self,
-        message: str = "Validation error",
-        details: Optional[Dict[str, Any]] = None,
-    ):
-        super().__init__(message=message, status_code=400, details=details)
