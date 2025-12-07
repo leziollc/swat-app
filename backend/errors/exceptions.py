@@ -43,3 +43,14 @@ class ConfigurationError(BaseAppException):
         details: dict[str, Any] | None = None,
     ):
         super().__init__(message=message, status_code=500, details=details)
+
+
+class ValidationError(BaseAppException):
+    """Exception raised when client input validation fails."""
+
+    def __init__(
+        self,
+        message: str = "Validation failed",
+        details: dict[str, Any] | None = None,
+    ):
+        super().__init__(message=message, status_code=400, details=details)

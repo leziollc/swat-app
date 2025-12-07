@@ -12,7 +12,6 @@ import pandas as pd
 from databricks import sql
 from databricks.sdk.core import Config
 
-# Lazily load Databricks SDK Config to avoid import-time auth errors
 _cfg: Config | None = None
 
 
@@ -43,14 +42,7 @@ def get_connection(warehouse_id: str):
 
     http_path = f"/sql/1.0/warehouses/{warehouse_id}"
 
-    # If the Databricks SDK Config is not available (e.g. in unit tests or
-    # local dev without environment variables), still call `sql.connect`
-    # so tests that mock `services.db.connector.sql` can observe the call.
     if cfg is None:
-        # Provide a placeholder server_hostname so typed stubs are satisfied.
-        # In tests `services.db.connector.sql` is typically mocked, so these
-        # values are unused; this keeps mypy happy while allowing runtime
-        # mocking in CI/tests.
         return sql.connect(server_hostname="", http_path=http_path)
 
     return sql.connect(
@@ -65,7 +57,6 @@ def close_connections():
     Close all open connections.
     This should be called when shutting down the application.
     """
-    # Clear the lru_cache to close connections
     get_connection.cache_clear()
 
 
@@ -95,21 +86,16 @@ def query(
             else:
                 cursor.execute(sql_query)
 
-            # Use fetchall directly for non-Arrow results
-            # and convert to appropriate format
             result = cursor.fetchall()
             columns = [col[0] for col in cursor.description]
 
             if as_dict:
-                # Convert to list of dictionaries
-                return [dict(zip(columns, row)) for row in result]
+                return [dict(zip(columns, row, strict=False)) for row in result]
             else:
-                # Convert to pandas DataFrame
                 return pd.DataFrame(result, columns=columns)
 
     except Exception as e:
-        # Don't close the cached connection on error
-        raise Exception(f"Query failed: {str(e)}")
+        raise Exception(f"Query failed: {str(e)}") from e
 
 
 def insert_data(table_path: str, data: list[dict], warehouse_id: str) -> int:
@@ -134,14 +120,11 @@ def insert_data(table_path: str, data: list[dict], warehouse_id: str) -> int:
 
     try:
         with conn.cursor() as cursor:
-            # Get column names from the first record
             columns = list(data[0].keys())
             columns_str = ", ".join(columns)
 
-            # Create placeholders for a single row
             placeholders = ", ".join(["?"] * len(columns))
 
-            # Build the INSERT statement with multiple VALUES clauses
             values_clauses: list[str] = []
             all_values: list[Any] = []
 
@@ -154,11 +137,9 @@ def insert_data(table_path: str, data: list[dict], warehouse_id: str) -> int:
                 VALUES {", ".join(values_clauses)}
             """
 
-            # Execute the insert with all values in a single statement
             cursor.execute(insert_query, all_values)
 
-            # Get the number of affected rows
-            return cursor.rowcount
+            return int(cursor.rowcount)
 
     except Exception as e:
-        raise Exception(f"Failed to insert data: {str(e)}")
+        raise Exception(f"Failed to insert data: {str(e)}") from e

@@ -4,7 +4,6 @@ from backend.app import app
 
 client = TestClient(app)
 
-# Example with auto-create enabled
 auto_create_example = {
     "catalog": "my_catalog",
     "schema_name": "my_schema",
@@ -26,8 +25,6 @@ auto_create_example = {
 endpoints = [
     ("GET", "/api/v1/records/read?catalog=CAT&schema=SCHEMA&table=records&limit=1&offset=0", None),
     ("POST", "/api/v1/records/write", {"catalog":"CAT","schema_name":"SCHEMA","table":"records","data":[{"order_id":2,"amount":20.0}]}),
-    # Example with auto-create:
-    # ("POST", "/api/v1/records/write", auto_create_example),
     ("PUT", "/api/v1/records/update", {"catalog":"CAT","schema_name":"SCHEMA","table":"records","key_column":"order_id","key_value":1,"updates":{"amount":15.0}}),
     ("DELETE", "/api/v1/records/delete", {"catalog":"CAT","schema_name":"SCHEMA","table":"records","key_column":"order_id","key_value":1,"soft":True}),
 ]

@@ -14,7 +14,6 @@ class TestConnectionFailures:
 
     def test_query_with_connection_timeout(self, mocker):
         """Test query behavior when connection times out."""
-        # Mock connection that raises timeout
         mock_conn = MagicMock()
         mock_conn.cursor.side_effect = TimeoutError("Connection timeout")
 
@@ -71,7 +70,6 @@ class TestConnectionFailures:
 
     def test_endpoint_handles_database_error_gracefully(self, mocker):
         """Test API endpoint handles database errors with proper error response."""
-        # Mock query to raise database error
         mocker.patch(
             "backend.services.db.connector.query",
             side_effect=Exception("Database unavailable")
@@ -96,7 +94,6 @@ class TestConnectionFailures:
     def test_missing_warehouse_id_configuration(self):
         """Test behavior when warehouse ID is not configured."""
         with TestClient(app) as client:
-            # Temporarily remove warehouse_id from settings
             with patch("backend.config.settings.settings.databricks_warehouse_id", None):
                 resp = client.get(
                     "/api/v1/records/read",
@@ -121,7 +118,6 @@ class TestConnectionFailures:
             call_count += 1
             if call_count == 1:
                 raise ConnectionError("First connection failed")
-            # Second call succeeds
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_cursor.fetchall.return_value = [(1, "test")]
@@ -134,14 +130,11 @@ class TestConnectionFailures:
             side_effect=side_effect_connection
         )
 
-        # First call fails
-        with pytest.raises(Exception):
+        with pytest.raises((RuntimeError, ConnectionError)):
             query("SELECT * FROM test", "warehouse-123")
 
-        # Clear cache to allow retry
         close_connections()
 
-        # Second call should succeed
         result = query("SELECT * FROM test", "warehouse-456", as_dict=True)
         assert len(result) == 1
 
@@ -155,7 +148,6 @@ class TestConnectionFailures:
             return_value=mock_conn
         )
 
-        # Multiple queries should all fail gracefully
         with TestClient(app) as client:
             responses = []
             for _ in range(3):
@@ -170,7 +162,6 @@ class TestConnectionFailures:
                 )
                 responses.append(resp)
 
-            # All should return 500 error
             for resp in responses:
                 assert resp.status_code == 500
 
@@ -178,7 +169,7 @@ class TestConnectionFailures:
         """Test handling of corrupted query results."""
         mock_conn = MagicMock()
         mock_cursor = MagicMock()
-        mock_cursor.fetchall.return_value = None  # Corrupted result
+        mock_cursor.fetchall.return_value = None
         mock_cursor.description = [("id",)]
         mock_conn.cursor.return_value.__enter__.return_value = mock_cursor
 
@@ -187,8 +178,7 @@ class TestConnectionFailures:
             return_value=mock_conn
         )
 
-        # Should handle gracefully
-        with pytest.raises(Exception):
+        with pytest.raises(Exception, match="Query failed"):
             query("SELECT * FROM test", "warehouse-123")
 
     def test_insert_with_constraint_violation(self, mocker):
@@ -211,7 +201,6 @@ class TestConnectionFailures:
         mock_conn = MagicMock()
         mock_conn.close.side_effect = Exception("Connection already closed")
 
-        # Should not raise exception
         try:
             close_connections()
         except Exception as e:
@@ -224,7 +213,7 @@ class TestConnectionFailures:
             side_effect=ValueError("Warehouse not found: invalid-warehouse")
         )
 
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             query("SELECT 1", "invalid-warehouse")
 
     def test_sql_syntax_error_in_query(self, mocker):

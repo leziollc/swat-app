@@ -9,10 +9,13 @@ import time
 from contextlib import asynccontextmanager
 
 import uvicorn
+from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 
 from .errors.handlers import register_exception_handlers
 from .routes import api_router
+
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -35,7 +38,6 @@ async def lifespan(app: FastAPI):
     logger.info("Application shutdown complete")
 
 
-# Create the main FastAPI application
 app = FastAPI(
     title="FastAPI & Databricks App",
     description="A FastAPI application for Databricks Apps runtime",
@@ -43,24 +45,46 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Register exception handlers
+@app.middleware("http")
+async def cache_request_body_and_track_time(request: Request, call_next):
+    """Cache request body and track execution time so error handlers can access them."""
+    import time
+
+    start_time = time.perf_counter()
+    request.state.start_time = start_time
+
+    if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
+        body = await request.body()
+
+        request._body = body
+
+        async def receive():
+            return {"type": "http.request", "body": body}
+
+        request._receive = receive
+
+    try:
+        response = await call_next(request)
+    finally:
+        execution_time_ms = (time.perf_counter() - start_time) * 1000
+        request.state.execution_time_ms = execution_time_ms
+
+    return response
+
 register_exception_handlers(app)
 
-# Include the API router
 app.include_router(api_router)
 
 
-# Root endpoint
 @app.get("/")
 async def root() -> dict[str, str]:
     return {
-        "app": "Databricks FastAPI Example",
+        "app": "Databricks FastAPI App (Developed by Dami Alebiosu)",
         "message": "Welcome to the Databricks FastAPI app",
         "docs": "/docs",
     }
 
 
-# Performance monitoring middleware
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
     start_time = time.time()

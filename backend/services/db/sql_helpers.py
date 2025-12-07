@@ -6,7 +6,6 @@ IDENT_OPS = {"=", "!=", ">", "<", ">=", "<=", "LIKE", "IN"}
 def _validate_identifier(name: str | None) -> None:
     if not isinstance(name, str) or not name:
         raise ValueError("Invalid identifier")
-    # conservative check
     if not name[0].isalpha() and name[0] != "_":
         raise ValueError("Invalid identifier")
     for ch in name:
