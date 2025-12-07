@@ -4,16 +4,16 @@ A production-ready FastAPI application for performing CRUD operations on Databri
 
 ## Features
 
-✨ **Auto-Create Tables** - Automatically create tables with schema validation  
-🔒 **Security** - SQL injection prevention via parameterized queries and identifier validation  
-📊 **Schema Validation** - 18 SQL data types with Pydantic validation and detailed error responses  
-🚀 **Async Support** - Full async/await with FastAPI  
-🧪 **Comprehensive Tests** - 100 tests passing (99 passed + 1 skipped) with full coverage  
-🔧 **GitHub Actions** - Automated CI/CD with pytest (80% coverage), mypy, and ruff  
-📝 **Auto Audit** - 8 automatic audit columns: `record_uuid`, `is_deleted`, `inserted_at`, `inserted_by`, `updated_at`, `updated_by`, `deleted_at`, `deleted_by`  
-🔄 **Multi-Record Operations** - Update and delete single, multiple, or filtered records in one request  
-💡 **Enhanced Error Handling** - Schema validation errors include expected schema for faster debugging  
-📋 **Database Logging** - Automatic error logging to Databricks `api_log` table for monitoring and debugging
+**Auto-Create Tables** - Automatically create tables with schema validation  
+**Security** - SQL injection prevention via parameterized queries and identifier validation  
+**Schema Validation** - 18 SQL data types with Pydantic validation and detailed error responses  
+**Async Support** - Full async/await with FastAPI  
+**Comprehensive Tests** - 100 tests passing with full coverage  
+**GitHub Actions** - Automated CI/CD with pytest (80% coverage), mypy, and ruff  
+**Auto Audit** - 8 automatic audit columns: `record_uuid`, `is_deleted`, `inserted_at`, `inserted_by`, `updated_at`, `updated_by`, `deleted_at`, `deleted_by`  
+**Multi-Record Operations** - Update and delete single, multiple, or filtered records in one request  
+**Enhanced Error Handling** - Schema validation errors include expected schema for faster debugging  
+**Database Logging** - Automatic error logging to Databricks `api_log` table for monitoring and debugging
 
 ## Quick Start
 
@@ -590,7 +590,7 @@ Supports 3 deletion scenarios:
 ## Project Structure
 
 ```
-da-app-fastapi/
+swat-app/
 ├── backend/
 │   ├── app.py                 # FastAPI application entry point
 │   ├── config/

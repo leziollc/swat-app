@@ -38,9 +38,9 @@ jobs:
         env:
           TARGET: ${{ github.event.inputs.target || 'dev' }}
         run: |
-          echo "✅ Asset bundle created successfully"
-          echo "📦 Artifact: repo-asset-bundle.zip"
-          echo "🎯 Target environment: $TARGET"
+          echo "Asset bundle created successfully"
+          echo "Artifact: repo-asset-bundle.zip"
+          echo "Target environment: $TARGET"
           echo ""
           echo "To deploy, download the artifact and:"
           echo "1. Extract the zip file"
